@@ -1,3 +1,9 @@
+const HideKeyboardOpts = {
+	reply_markup:
+		JSON.stringify({
+			hide_keyboard: true
+		})
+};
 
 class ResponseContext {
 	constructor(bot, chat) {
@@ -6,8 +12,8 @@ class ResponseContext {
 		this._responseWaitQueue = [];
 	}
 
-	sendText(text, ...params) {
-		this.bot.sendMessage(this.chat.id, text, ...params);
+	sendText(text, opts = HideKeyboardOpts) {
+		this.bot.sendMessage(this.chat.id, text, opts);
 	}
 
 	waitForResponse() {
