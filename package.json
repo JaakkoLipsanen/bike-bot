@@ -5,11 +5,16 @@
   "main": "server.js",
   "scripts": {
     "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "dependencies": {
     "express": "^4.15.2",
     "node-telegram-bot-api": "^0.27.1"
+  },
+  "devDependencies": {
+    "eslint": "^3.19.0",
+    "nodemon": "^1.11.0"
   }
 }
