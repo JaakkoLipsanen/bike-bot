@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const Bot = require('./bot');
 const RouteCommand = require('./commands/route-command');
 

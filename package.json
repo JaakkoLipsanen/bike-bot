@@ -10,6 +10,7 @@
   },
   "author": "",
   "dependencies": {
+    "dotenv": "^4.0.0",
     "express": "^4.15.2",
     "node-telegram-bot-api": "^0.27.1"
   },
