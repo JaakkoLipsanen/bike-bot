@@ -16,6 +16,10 @@ class ResponseContext {
 		this.bot.sendMessage(this.chat.id, text, opts);
 	}
 
+	sendImage(image, opts = HideKeyboardOpts) {
+		this.bot.sendPhoto(this.chat.id, image, opts);
+	}
+
 	waitForResponse() {
 		return new Promise(resolve => {
 			this._responseWaitQueue.push({ resolve: resolve });

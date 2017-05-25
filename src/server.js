@@ -8,3 +8,6 @@ const bot = new Bot({ apiToken: token });
 
 bot.register('route', RouteCommand);
 bot.start();
+
+// show more detailed errors for unhandled promise exceptions
+process.on('unhandledRejection', r => console.error(r));

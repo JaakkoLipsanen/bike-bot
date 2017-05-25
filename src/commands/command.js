@@ -6,7 +6,8 @@ class Command {
 	}
 
 	run({ context, parameters }) { }
-	abort() { this.bot.sendText("Command aborted"); } // TODO: command name as well?
+	abort() { } // TODO: command name as well?
+	onAbort() { this.bot.sendText("Command aborted"); }
 
 	onNewMessage(msg) {
 		this._context._onNewMessage(msg);

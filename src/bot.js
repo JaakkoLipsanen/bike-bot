@@ -21,6 +21,7 @@ class Bot {
 	}
 
 	_subscribeToNewMessages () {
+		console.log("Starting to listen for commands");
 		this.bot.on('message', (msg) => {
 
 			// if is text message and matches command format (= '/test yy zz' etc)
@@ -62,7 +63,7 @@ class Bot {
 
 	_isCommand(text) {
 		// Matches "/command [params]"
-		const matchCommandRegex = /\/([^\s\\]+)\s+(.*)/;
+		const matchCommandRegex = /\/([^\s\\]+)\s*(.*)/;
 		return matchCommandRegex.test(text);
 	}
 
