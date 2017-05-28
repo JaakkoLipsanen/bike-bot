@@ -1,10 +1,10 @@
 require('dotenv').config();
 
-const Bot = require('./bot');
+const TelegramBot = require('tg-commands');
 const RouteCommand = require('./commands/route-command');
 
 const token = process.env.TG_BOT_TOKEN;
-const bot = new Bot({ apiToken: token });
+const bot = new TelegramBot({ apiToken: token });
 
 bot.register('route', RouteCommand);
 bot.start();

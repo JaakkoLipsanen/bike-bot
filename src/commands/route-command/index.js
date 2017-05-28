@@ -25,7 +25,7 @@ class RouteCommand extends Command {
 		const route = routeResult.payload.route;
 		const chart = await chartRenderer.renderChart(route);
 
-		context.sendImage(chart);
+		context.sendPhoto(chart);
 	}
 
 	async getRouteFrom(waypoints) {
