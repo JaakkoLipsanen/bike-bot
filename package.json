@@ -13,9 +13,9 @@
     "@google/maps": "^0.3.1",
     "chart.js": "^2.5.0",
     "chartjs-node": "^1.4.1",
-    "dotenv": "^4.0.0",
+    "dotenv-safe": "^4.0.4",
     "express": "^4.15.2",
-    "tg-commands": "0.0.1"
+    "tg-commands": "^0.0.1"
   },
   "devDependencies": {
     "eslint": "^3.19.0",

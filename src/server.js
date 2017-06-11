@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv-safe').load({ allowEmptyValues: true });
 
 const TelegramBot = require('tg-commands');
 const RouteCommand = require('./commands/route-command');
