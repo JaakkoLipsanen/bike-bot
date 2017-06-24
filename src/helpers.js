@@ -16,36 +16,34 @@ const LocationKeyboardMarkup =
 module.exports = {
 	// returns { lat, lng }
 	async askForLocation(context, initialMessage = "Enter location") {
+		const { value } = await context.askForMessage(initialMessage, {
+			keyboardMarkup: LocationKeyboardMarkup,
+			accept: async (msg, reject) => {
+				if(msg.location) {
+					const { latitude, longitude } = msg.location;
+					return  { lat: latitude, lng: longitude };
+				}
+				else if(msg.text) { // location like "Helsinki"
+					// TODO: this doesn't really need to be geocoded.
+					// gmaps directions api works with strings as well.
+					// but with geocoding, the invalid address is found immediately
+					// (and there is options to select if many results!!!)
+					const result = await this.geocodeLocation(msg.text);
+					if(result.success) {
 
-		let messageToShow = initialMessage;
-		while(true) {
-			const opts = { reply_markup: LocationKeyboardMarkup };
-			context.sendText(messageToShow, opts);
+						// TODO: if there is more than one result, then show an inline
+						// button with all the choices instead of defaulting to the first one
+						return result.payload.results[0];
+					}
 
-			const msg = await context.waitForResponse();
-			if(msg.location) {
-				const { latitude, longitude } = msg.location;
-				return  { lat: latitude, lng: longitude };
-			}
-			else if(msg.text) { // location like "Helsinki"
-				// TODO: this doesn't really need to be geocoded.
-				// gmaps directions api works with strings as well.
-				// but with geocoding, the invalid address is found immediately
-				// (and there is options to select if many results!!!)
-				const result = await this.geocodeLocation(msg.text);
-				if(result.success) {
-
-					// TODO: if there is more than one result, then show an inline
-					// button with all the choices instead of defaulting to the first one
-					return result.payload.results[0];
+					return reject(result.error.message);
 				}
 
-				messageToShow = result.error.message;
+				return reject("Invalid message. Please send location or address");
 			}
-			else {
-				messageToShow = "Invalid message. Please send location or address";
-			}
-		}
+		});
+
+		return value;
 	},
 
 	// string -> { latitude, longitude }
