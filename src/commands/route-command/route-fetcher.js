@@ -1,8 +1,23 @@
 const { gmapsClient } = require('../../helpers');
+const ELEVATION_SAMPLES = 512; // less samples means less accurate ascent/descent
 
 module.exports = {
 	async getRouteFrom(waypoints) {
-	//	assert(waypoints.length >= 2);
+		let result = await this._queryRoutes(waypoints, "bicycling");
+		if(!result.success && result.error.type === "zero-results") {
+			result = await this._queryRoutes(waypoints, "walking");
+		}
+
+		if(!result.success) {
+			return result;
+		}
+
+		// TODO: should this return other info as well?
+		// for example, .geometry has formatted_location, bounds etc
+		return { success: true, payload: { routes: await this._createRoutes(result.payload.routes) } };
+	},
+
+	async _queryRoutes(waypoints, mode) {
 
 		// TODO: if the origin/destination are in a country that doesn't support
 		// mode: "bicycling", then ZERO_RESULTS status is returned along with
@@ -11,7 +26,7 @@ module.exports = {
 			origin: waypoints[0],
 			destination: waypoints[waypoints.length - 1],
 			waypoints: waypoints.slice(1, waypoints.length - 1),
-			mode: "bicycling",
+			mode: mode,
 			alternatives: true, // can return more than one path
 			avoid: ["highways"],
 			units: "metric",
@@ -26,6 +41,7 @@ module.exports = {
 			return {
 				success: false,
 				error: {
+					type: "unknown",
 					message:
 						`Something went wrong: ${payload.error_message}` +
 						"\n\nPlease try again"
@@ -33,23 +49,24 @@ module.exports = {
 			};
 		}
 
-		const results = payload.routes;
-		if(payload.status === 'ZERO_RESULTS' || results.length === 0) {
+		const routes = payload.routes;
+		if(payload.status === 'ZERO_RESULTS' || routes.length === 0) {
 			return {
 				success: false,
-				error: { message: "No results found" }
+				error: { type: "zero-results", message: "No results found" }
 			};
 		}
 		else if(payload.status !== 'OK') {
 			return {
 				success: false,
-				error: { message: `Something went wrong with status '${payload.status}'` }
+				error: {
+					type: "unknown",
+					message: `Something went wrong with status '${payload.status}'`
+				}
 			};
 		}
 
-		// TODO: should this return other info as well?
-		// for example, .geometry has formatted_location, bounds etc
-		return { success: true, payload: { routes: await this._createRoutes(results) } };
+		return { success: true, payload: { routes: routes } };
 	},
 
 	async _createRoutes(results) {
@@ -62,44 +79,59 @@ module.exports = {
 	},
 
 	async _createRoute(result) {
-		const points = [];
-		let totalDistance = 0; // in meters
-
-		for(const leg of result.legs) {
-			let tempTotalDistance = totalDistance;
-			for(const step of leg.steps) {
-				const location = step.end_location || step.start_location;
-				const point = { distance: tempTotalDistance, location: location };
-
-				points.push(point);
-				tempTotalDistance += step.distance.value;
-			}
-
-			// don't use tempTotalDistance, since there will be some rounding
-			// errors. Not that it really matters :P
-			totalDistance += leg.distance.value;
-		}
+		const polyline = result.overview_polyline.points;
+		const elevationData = await this._getElevationDataFrom(polyline);
+		const distance = result.legs.reduce((total, leg) => total + leg.distance.value, 0) / 1000;
 
 		return {
-			distance: totalDistance,
-			points: points,
-			elevationData: await this._getElevationDataFrom(points.map(p => p.location))
+			distance: distance,
+			overviewPolyline: polyline,
+			elevationData: elevationData,
+			mapImageLink: this._createGmapsImageLink(polyline),
 		};
 	},
 
-	async _getElevationDataFrom(points) {
+	async _getElevationDataFrom(polyline) {
 		const elevationResponse = await gmapsClient.elevationAlongPath({
-			path: points,
-			samples: 512,
+			path: polyline,
+			samples: ELEVATION_SAMPLES,
 		}).asPromise();
 
 		const payload = elevationResponse.json;
 		if(elevationResponse.status != 200 || payload.status !== 'OK') {
-			console.error(`Something went wrong with getElevationDataFrom ${payload && payload.error_message}`);
-			return [];
+			console.error(`Something went wrong with getElevationDataFrom`, elevationResponse.status);
+			return { ascent: 0, descent: 0, points: [] };
 		}
 
 		// array of { elevation, location: { lat, lon } }
-		return payload.results;
+		const elevationPoints = payload.results;
+		const ascentData = this._calculateAscentDescentData(elevationPoints);
+
+		return { points: elevationPoints, ascent: ascentData.ascent, descent: ascentData.descent };
+	},
+
+	_createGmapsImageLink(polyline) {
+		// TODO: scale=2, causes the image to be double size. Maybe add an "low-quality"/"high-quality" toggle?
+		return `https://maps.googleapis.com/maps/api/staticmap?size=640x640&scale=2&path=weight:3%7Cenc:${polyline}`;
+	},
+
+	_calculateAscentDescentData(elevationPoints) {
+		let ascent = 0;
+		let descent = 0;
+
+		for(let i = 1; i < elevationPoints.length; i++) {
+			const currPoint = elevationPoints[i];
+			const prevPoint = elevationPoints[i - 1];
+
+			if(currPoint.elevation > prevPoint.elevation) {
+				ascent += currPoint.elevation - prevPoint.elevation;
+			}
+			else {
+				descent += prevPoint.elevation - currPoint.elevation;
+			}
+
+		}
+
+		return { ascent, descent };
 	}
 };

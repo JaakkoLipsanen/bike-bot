@@ -1,4 +1,4 @@
-const Command = require('../command');
+const { Command } = require('tg-commands');
 const helpers = require('../../helpers');
 
 const chartRenderer = require('./chart-renderer');
@@ -13,19 +13,25 @@ class RouteCommand extends Command {
 		super(...args);
 	}
 
-	async run({ context, parameters }) {
-		const waypoints = await this.getWaypoints(context, parameters);
-
+	async run(ctx, params) {
+		const waypoints = await this.getWaypoints(ctx, params);
 		const routeResult = await this.getRouteFrom(waypoints);
+
 		if(!routeResult.success) {
-			context.sendText(routeResult.error.message);
+			ctx.sendText(routeResult.error.message);
 			return;
 		}
 
 		const route = routeResult.payload.route;
 		const chart = await chartRenderer.renderChart(route);
 
-		context.sendPhoto(chart);
+		ctx.sendText(
+			`*Distance:* ${route.distance.toFixed(1)}km\n` +
+			`*Ascent/Descent:* +${Math.round(route.elevationData.ascent)}m/-${Math.round(route.elevationData.descent)}m`,
+			{ parse_mode: "markdown" });
+
+		ctx.sendPhoto(chart);
+		ctx.sendPhoto(route.mapImageLink);
 	}
 
 	async getRouteFrom(waypoints) {

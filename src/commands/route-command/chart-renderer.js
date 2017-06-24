@@ -13,11 +13,9 @@ const getStepSizeFrom = (distance) => {
 const getHorizontalLabelsFrom = (route) => {
 	const labels = [];
 
-	const routeDistanceInKm = route.distance / 1000;
-	const count = route.elevationData.length;
-
-	for(let i = 0; i <= count; i++) {
-		labels.push(Math.round(routeDistanceInKm * (i / count)));
+	const pointCount = route.elevationData.points.length;
+	for(let i = 0; i <= pointCount; i++) {
+		labels.push(Math.round(route.distance * (i / pointCount)));
 	}
 
 	return labels;
@@ -25,10 +23,8 @@ const getHorizontalLabelsFrom = (route) => {
 
 const createChartOpts = (route) => {
 	const labels = getHorizontalLabelsFrom(route); // x axis labels
-	const data = route.elevationData.map(p => ({ x: p.distance, y: p.elevation }) ); // y-axis
-
-	const routeLengthInKm = Math.round(route.distance / 1000); // in km
-	const stepSize = getStepSizeFrom(routeLengthInKm);
+	const data = route.elevationData.points.map(p => ({ x: p.distance, y: p.elevation }) ); // y-axis
+	const stepSize = getStepSizeFrom(route.distance);
 
 	return {
 		type: "line",
@@ -50,7 +46,7 @@ const createChartOpts = (route) => {
 					type: "linear", position: "bottom",
 					scaleLabel: { display: true, labelString: "kilometers" },
 					ticks: {
-						min: 0, max: routeLengthInKm,
+						min: 0, max: route.distance,
 						stepSize: stepSize
 					},
 				}],
@@ -65,7 +61,7 @@ const createChartOpts = (route) => {
 
 module.exports = {
 	async renderChart(route) {
-		const chartNode = new ChartjsNode(800, 500);
+		const chartNode = new ChartjsNode(1280, 500);
 		await chartNode.drawChart(createChartOpts(route));
 
 		return await chartNode.getImageBuffer('image/png');
