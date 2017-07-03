@@ -1,4 +1,4 @@
-const { Command } = require('tg-commands');
+const { Command } = require('../../bot');
 const helpers = require('../../helpers');
 
 const chartRenderer = require('./chart-renderer');

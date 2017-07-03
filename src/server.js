@@ -1,6 +1,6 @@
 require('dotenv-safe').load({ allowEmptyValues: true });
 
-const { TelegramBot } = require('tg-commands');
+const { TelegramBot } = require('./bot');
 const RouteCommand = require('./commands/route-command');
 
 const token = process.env.TG_BOT_TOKEN;

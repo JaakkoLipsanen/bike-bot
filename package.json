@@ -15,7 +15,7 @@
     "chartjs-node": "^1.4.1",
     "dotenv-safe": "^4.0.4",
     "express": "^4.15.2",
-    "tg-commands": "^0.0.1"
+    "tgfancy": "^0.10.0"
   },
   "devDependencies": {
     "eslint": "^3.19.0",
