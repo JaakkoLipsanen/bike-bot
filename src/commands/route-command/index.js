@@ -22,7 +22,21 @@ class RouteCommand extends Command {
 			return;
 		}
 
-		const route = routeResult.payload.route;
+		const payload = routeResult.payload;
+		await this.sendRouteInfo(ctx, payload.route, payload.otherRoutes);
+
+		while(true) {
+			const query = await ctx.waitForCallbackQuery();
+			if(!query.data) continue;
+
+			const index = parseInt(query.data);
+			if(index < 0 || index >= payload.otherRoutes.length) continue;
+
+			await this.sendRouteInfo(ctx, payload.otherRoutes[index]);
+		}
+	}
+
+	async sendRouteInfo(ctx, route, otherRoutes) {
 		const chart = await chartRenderer.renderChart(route);
 
 		ctx.sendText(
@@ -31,21 +45,28 @@ class RouteCommand extends Command {
 			{ parse_mode: "markdown" });
 
 		ctx.sendPhoto(chart);
-		ctx.sendPhoto(route.mapImageLink);
+		ctx.sendPhoto(
+			route.mapImageLink,
+			otherRoutes ? this.createAlternativeRoutesReplyMarkup(otherRoutes) : undefined);
 	}
 
 	async getRouteFrom(waypoints) {
 		const result = await routeFetcher.getRouteFrom(waypoints);
 		if(result.success) {
 			// TODO: display multiple routes? maybe show inline buttons?
-			return  { success: true, payload: { route: result.payload.routes[0] } };
+			return  {
+				success: true,
+				payload: {
+					route: result.payload.routes[0],
+					otherRoutes: result.payload.routes.slice(1)
+				}
+			};
 		}
 
 		// TODO: this.abort(result.error.message) or something?
 		return result;
 	}
 
-	// TODO: this doesnt work atm, parameters[0]/[1] should be geolocated
 	async getWaypoints(ctx, parameters) {
 		if(parameters.length >= 2) {
 			return parameters;
@@ -56,6 +77,25 @@ class RouteCommand extends Command {
 
 		// TODO: support 'via' commands/more than 2 points
 		return [startLocation, endLocation];
+	}
+
+	createAlternativeRoutesReplyMarkup(alternativeRoutes) {
+		const buttonText = alternativeRoutes.length <= 2 ?
+			"Alternative route " :
+			(alternativeRoutes.length <= 4 ? "Alt route " : "");
+
+		return {
+			reply_markup: {
+				inline_keyboard: [
+					alternativeRoutes.map((r, i) =>
+						({
+							text: `${buttonText} ${i+1}`,
+							callback_data: i.toString()
+						})
+					)
+				]
+			}
+		};
 	}
 }
 
