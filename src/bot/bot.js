@@ -73,12 +73,13 @@ class TelegramBot {
 
 		const context = new ResponseContext(this.bot, chat);
 		const params = commandInfo.params;
+		const paramsRaw = commandInfo.paramsRaw;
 
 		const createdCommand = new NewCommandType({ context: context });
 		this._currentCommand = createdCommand;
 
 		// run and wait until the execution has ended
-		await this._currentCommand.run(context, params, { /* TODO: smth?? */ });
+		await this._currentCommand.run(context, params, { paramsRaw: paramsRaw });
 		if(this._currentCommand === createdCommand) {
 			this._currentCommand = null;
 		}
@@ -107,7 +108,8 @@ class TelegramBot {
 
 		// remove the command name and possible quotes around the parameters
 		const params = match.splice(1).map(p => p.replace(/"/g, ''));
-		return { name: name, params: params };
+		const paramsRaw = commandText.slice(name.length + 1).trim();
+		return { name: name, params: params, paramsRaw: paramsRaw };
 	}
 }
 
