@@ -1,4 +1,7 @@
-require('dotenv-safe').load({ allowEmptyValues: true });
+const useDotEnv = !process.env.NO_DOT_ENV;
+if(useDotEnv) {
+    require('dotenv-safe').load({ allowEmptyValues: true });
+}
 
 const { TelegramBot } = require('./bot');
 const RouteCommand = require('./commands/route-command');
