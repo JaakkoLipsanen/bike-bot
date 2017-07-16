@@ -87,5 +87,43 @@ module.exports = {
 		return { success: true, payload: { results: results.map(r => r.geometry.location) } };
 	},
 
+	calculateDistance(from, to) {
+		const ToRadMultiplier = 0.0174532925;
+
+		// haversine formula
+		const dLng = (to.lng - from.lng) * ToRadMultiplier;
+		const dLat = (to.lat - from.lat) * ToRadMultiplier;
+
+		const a =
+			Math.pow(Math.sin(dLat / 2), 2) +
+			Math.cos(from.lat * ToRadMultiplier) *
+			Math.cos(to.lat * ToRadMultiplier) *
+			Math.pow(Math.sin(dLng / 2), 2);
+
+		const c = 2 * Math.asin(Math.sqrt(a));
+		const radius = 6371; // earth radius in km
+
+		return (radius * c).toFixed(2);
+	},
+
+	calculateDirection(from, to) {
+		const ToRadMultiplier = 0.0174532925;
+		const rad = (deg) => deg * ToRadMultiplier;
+		const deg = (rad) => rad / ToRadMultiplier;
+
+		const dLng = rad(to.lng - from.lng);
+		const x = Math.sin(dLng) * Math.cos(rad(to.lat));
+		const y =
+			Math.cos(rad(from.lat)) * Math.sin(rad(to.lat)) -
+			Math.sin(rad(from.lat)) * Math.cos(rad(to.lat)) * Math.cos(dLng);
+
+		const initialBearing = deg(Math.atan2(x, y));
+		const compassBearing = (360 + initialBearing) % 360;
+
+		const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "N"]
+		const index = Math.round(compassBearing / 45);
+		return directions[index]
+	},
+
 	gmapsClient: gmapsClient
 };
