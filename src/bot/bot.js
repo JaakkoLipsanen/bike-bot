@@ -4,18 +4,29 @@ const Command = require('./command');
 const ResponseContext = require('./response-context');
 
 class TelegramBot {
-	constructor({ apiToken }) {
+	constructor({ apiToken, opts }) {
 		this._currentCommand = null;
 		this._registeredCommands = { }; // hash-map of commands { string: Command }
-		this.bot = new Tgfancy(apiToken, {
-			polling: { autoStart: false }
-		});
+		this.tg = new Tgfancy(apiToken, opts);
 
 		this._subscribeToNewMessages();
 	}
 
-	start() {
-		this.bot.startPolling();
+	static createWithWebHook(apiToken, appUrl, host, port) {
+		console.log("Creating TelegramBot with web hooks");
+
+		const opts = { webHook: { host: host, port: port } };
+		const bot = new TelegramBot({ apiToken, opts });
+
+		bot.tg.setWebHook(`${appUrl}/bot${apiToken}`);
+		return bot;
+	}
+
+	static createWithPolling(apiToken, port, appUrl) {
+		console.log("Creating TelegramBot with polling");
+
+		const opts = { polling: { autoStart: true } };
+		return new TelegramBot({ apiToken, opts });
 	}
 
 	// command must inherit from Command
@@ -39,7 +50,7 @@ class TelegramBot {
 	}
 
 	_subscribeToNewMessages () {
-		this.bot.on('message', (msg) => {
+		this.tg.on('message', (msg) => {
 
 			// if is text message and matches command format (= '/test yy zz' etc)
 			if(msg.text && this._isCommand(msg.text)) {
@@ -51,7 +62,7 @@ class TelegramBot {
 			}
 		});
 
-		this.bot.on('callback_query', (query) => {
+		this.tg.on('callback_query', (query) => {
 			if(this._currentCommand !== null) {
 				this._currentCommand.onNewCallbackQuery(query);
 			}
@@ -61,7 +72,7 @@ class TelegramBot {
 	async _startCommand(chat, commandInfo) {
 		const NewCommandType = this._registeredCommands[commandInfo.name];
 		if(!NewCommandType) {
-			this.bot.sendMessage(chat.id, `Unknown command '${commandInfo.name}'`);
+			this.tg.sendMessage(chat.id, `Unknown command '${commandInfo.name}'`);
 			return;
 		}
 
@@ -71,7 +82,7 @@ class TelegramBot {
 			this._currentCommand.onAbort();
 		}
 
-		const context = new ResponseContext(this.bot, chat);
+		const context = new ResponseContext(this.tg, chat);
 		const params = commandInfo.params;
 		const paramsRaw = commandInfo.paramsRaw;
 
