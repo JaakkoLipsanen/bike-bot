@@ -90,7 +90,13 @@ class TelegramBot {
 		this._currentCommand = createdCommand;
 
 		// run and wait until the execution has ended
-		await this._currentCommand.run(context, params, { paramsRaw: paramsRaw });
+		try {
+			await this._currentCommand.run(context, params, { paramsRaw });
+		}
+		catch(err) {
+			context.sendText(`Uncaught error:\n${err}`);
+		}
+
 		if(this._currentCommand === createdCommand) {
 			this._currentCommand = null;
 		}
