@@ -95,6 +95,7 @@ class TelegramBot {
 		}
 		catch(err) {
 			context.sendText(`Uncaught error:\n${err}`);
+			console.error(err);
 		}
 
 		if(this._currentCommand === createdCommand) {
