@@ -4,8 +4,8 @@
   "description": "Telegram bot for my cycling trips",
   "main": "server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon --inspect src/server.js",
+    "start": "node src/server.js --harmony",
+    "dev": "nodemon --inspect --harmony src/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

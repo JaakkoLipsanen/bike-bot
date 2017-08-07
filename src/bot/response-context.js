@@ -65,6 +65,17 @@ class ResponseContext {
 		this.bot.sendGame(this.chat.id, gameShortName, opts);
 	}
 
+	editMessageText(message, newText, opts = { }) {
+		return this.bot.editMessageText(
+			newText,
+			{ chat_id: message.chat.id, message_id: message.message_id, ...opts }
+		);
+	}
+
+	async getFileLink(document) {
+		return await this.bot.getFileLink(document.file_id)
+	}
+
 	waitForMessage() {
 		return new Promise(resolve => {
 			this._messageWaitQueue.push({ resolve: resolve });
