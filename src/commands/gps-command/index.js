@@ -14,9 +14,10 @@ const { Command } = require('../../bot');
 
 // TODO:
 // - add elevation to gps files with gmaps api
-// - send the last uploaded route filename in the upload prompt message
 // - send stats of the uploaded days? Distance and total ascent/descent are the most interesting
 // - overwrite prompt should be keyboard buttons instead of having to type "y" or "n"
+// - right now, multi file uplaods are really really inefficient, loading and
+//   saving the route between each file/day
 class GpsCommand extends Command {
 	constructor(...args) {
 		super(...args);
@@ -36,7 +37,7 @@ class GpsCommand extends Command {
 			ctx.sendText("Unrecognized params, only '/gps rebuild' is supported");
 		}
 
-		const uploadedDays = await this.waitForUploads(ctx);
+		const uploadedDays = await this.waitForUploads(ctx, tour);
 		for(const day of uploadedDays) {
 			await this.updateRoute(ctx, tour, day);
 			await this.saveRawDayRoute(tour, day);
@@ -45,7 +46,7 @@ class GpsCommand extends Command {
 		ctx.sendText("Done!");
 	}
 
-	async waitForUploads(ctx) {
+	async waitForUploads(ctx, tour) {
 		const DoneKeyboardMarkup = {
 			parse_mode: "markdown",
 			reply_markup: JSON.stringify({
@@ -57,8 +58,10 @@ class GpsCommand extends Command {
 			})
 		};
 
+		const lastUploadedDate = await this.getLastUploadedDateOfRoute(tour);
 		ctx.sendText(
 			"*Upload gps files*\n" +
+			(lastUploadedDate ? `_Last uploaded:_ *${lastUploadedDate}\n*` : "") +
 			"_Send 'done' when finished_\n" +
 			"_Change night type with 'n t' or 'n h'_",
 			DoneKeyboardMarkup
@@ -157,13 +160,7 @@ class GpsCommand extends Command {
 	}
 
 	async updateRoute(ctx, tour, day) {
-		const routeFolder = this.getTourRouteFolder(tour);
-		const routeJsonKey = routeFolder + "/route.json";
-		const routeTxtKey = routeFolder + "/route.txt";
-
-		const route = (await awsHelper.fileExists(routeJsonKey)) ?
-			await awsHelper.loadJson(routeJsonKey) :
-			{ };
+		const route = await awsHelper.loadJsonOrEmpty(tour.routeJsonKey);
 
 		const isOverwrite = route[day.date]; // check if the day exists already
 		if(isOverwrite && (await this.askAllowOverwrite(ctx, day.date) === false)) {
@@ -173,15 +170,15 @@ class GpsCommand extends Command {
 		route[day.date] = day;
 
 		const text = this.generateRouteTxt(tour, route);
-		await awsHelper.uploadFile(routeTxtKey, text);
-		await awsHelper.uploadFile(routeJsonKey, stableStringify(route));
+		await awsHelper.uploadFile(tour.routeTxtKey, text);
+		await awsHelper.uploadFile(tour.routeJsonKey, stableStringify(route));
 
 		ctx.sendText(`Success: ${day.date}`);
 	}
 
 	async rebuildTourRouteTxt(tour) {
-		const route = await awsHelper.loadJson(this.getTourRouteFolder(tour) + "/route.json");
-		await awsHelper.uploadFile(this.getTourRouteFolder(tour) + "/route.txt", await this.generateRouteTxt(tour, route));
+		const route = await awsHelper.loadJsonOrEmpty(tour.routeJsonKey);
+		await awsHelper.uploadFile(tour.routeTxtKey, await this.generateRouteTxt(tour, route));
 	}
 
 	generateRouteTxt(tour, route) {
@@ -211,7 +208,7 @@ class GpsCommand extends Command {
 	async askAllowOverwrite(ctx, filename) {
 		const result =
 			await ctx.askForMessage(
-				`Route ${filename} exists, overwrite (y/n)?`,
+				`Day ${filename} exists, overwrite (y/n)?`,
 				{
 					accept: (msg, reject) => {
 						if(msg.text && (msg.text.toLowerCase() === "y" || msg.text.toLowerCase() === "n")) {
@@ -227,8 +224,7 @@ class GpsCommand extends Command {
 	}
 
 	async saveRawDayRoute(tour, day) {
-		const routeFolder = this.getTourRouteFolder(tour);
-		await awsHelper.uploadFile(routeFolder + "/days/" + day.date + ".txt", day.rawText);
+		await awsHelper.uploadFile(tour.routeGpsFolderKey + day.date + ".txt", day.rawText);
 	}
 
 	pathToString(path) {
@@ -238,8 +234,10 @@ class GpsCommand extends Command {
 			.join("");
 	}
 
-	getTourRouteFolder(tour) {
-		return `cycle/routes/${tour.directoryName}`;
+	async getLastUploadedDateOfRoute(tour) {
+		const route = await awsHelper.loadJsonOrEmpty(tour.routeJsonKey);
+		const keys = Object.keys(route).sort();
+		return keys[keys.length - 1] || "";
 	}
 
 	async downloadFile(ctx, document) {

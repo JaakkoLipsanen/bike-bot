@@ -33,6 +33,15 @@ module.exports = {
         return JSON.parse(text);
     },
 
+    // TODO: could just load it and check if error is NoSuchKey
+    async loadJsonOrEmpty(key) {
+        if(await this.fileExists(key)) {
+            return await this.loadJson(key);
+        }
+
+        return { };
+    },
+
     async uploadFile(key, stream) {
         try {
             await s3.api.upload({ Key: key, Body: stream });
@@ -65,6 +74,16 @@ module.exports = {
 
     async getCurrentTour() {
         const tourData = await this.loadJson("cycle/tours.json");
-        return tourData.tours[tourData.currentTour];
+        const currentTour = tourData.tours[tourData.currentTour];
+        return {
+            ...currentTour,
+            routeJsonKey: this.getTourRouteFolder(currentTour) + "/route.json",
+            routeTxtKey: this.getTourRouteFolder(currentTour) + "/route.txt",
+            routeGpsFolderKey: this.getTourRouteFolder(currentTour) + "/days/",
+        };
+    },
+
+    getTourRouteFolder(tour) {
+        return `cycle/routes/${tour.directoryName}`;
     }
 };
