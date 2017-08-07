@@ -52,12 +52,20 @@ class TelegramBot {
 	_subscribeToNewMessages () {
 		this.tg.on('message', (msg) => {
 
-			// if is text message and matches command format (= '/test yy zz' etc)
-			if(msg.text && this._isCommand(msg.text)) {
-				const commandInfo = this._getCommandInfoFrom(msg.text);
-				this._startCommand(msg.chat, commandInfo);
+			if(msg.text) {
+				msg.text = msg.text.trim();
+
+				// if is text message and matches command format (= '/test yy zz' etc)
+				if(this._isCommand(msg.text)) {
+				   const commandInfo = this._getCommandInfoFrom(msg.text);
+				   this._startCommand(msg.chat, commandInfo);
+
+				   return;
+			   }
 			}
-			else if(this._currentCommand !== null) {
+
+
+			if(this._currentCommand !== null) {
 				this._currentCommand.onNewMessage(msg);
 			}
 		});
