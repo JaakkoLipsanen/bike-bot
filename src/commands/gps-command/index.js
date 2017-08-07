@@ -16,6 +16,7 @@ const { Command } = require('../../bot');
 // - add elevation to gps files with gmaps api
 // - send stats of the uploaded days? Distance and total ascent/descent are the most interesting
 // - overwrite prompt should be keyboard buttons instead of having to type "y" or "n"
+// - add /gps get-route or something to download the route.json or route.txt (for debugging)
 // - right now, multi file uplaods are really really inefficient, loading and
 //   saving the route between each file/day
 class GpsCommand extends Command {
@@ -130,6 +131,81 @@ class GpsCommand extends Command {
 		return days;
 	}
 
+	async updateRoute(ctx, tour, day) {
+		const route = await awsHelper.loadJsonOrEmpty(tour.routeJsonKey);
+
+		const isOverwrite = route[day.date]; // check if the day exists already
+		if(isOverwrite && (await this.askAllowOverwrite(ctx, day.date) === false)) {
+			return;
+		}
+
+		route[day.date] = day;
+
+		const text = this.generateRouteTxt(tour, route);
+		await awsHelper.uploadFile(tour.routeTxtKey, text);
+		await awsHelper.uploadFile(tour.routeJsonKey, stableStringify(route));
+
+		ctx.sendText(`Success: ${day.date}`);
+	}
+
+	async saveRawDayRoute(tour, day) {
+		await awsHelper.uploadFile(tour.routeGpsFolderKey + day.date + ".txt", day.rawText);
+	}
+
+	async rebuildTourRouteTxt(tour) {
+		const route = await awsHelper.loadJsonOrEmpty(tour.routeJsonKey);
+		await awsHelper.uploadFile(tour.routeTxtKey, await this.generateRouteTxt(tour, route));
+	}
+
+	// TODO: create keyboard buttons instead of y/n
+	async askAllowOverwrite(ctx, filename) {
+		const result =
+			await ctx.askForMessage(
+				`Day ${filename} exists, overwrite (y/n)?`,
+				{
+					accept: (msg, reject) => {
+						if(msg.text && (msg.text.toLowerCase() === "y" || msg.text.toLowerCase() === "n")) {
+							return msg.text.toLowerCase();
+						}
+
+						return reject("Send either 'y' or 'n' to continue");
+					}
+				}
+			);
+
+		return result.value === "y";
+	}
+
+	generateRouteTxt(tour, route) {
+		const dates = Object.keys(route).sort();
+		const startDate = moment(tour.startDate, "DD.MM.YYYY");
+
+		let output = `// route for ${tour.name}, generated from route.json\n`;
+		let previousDate = startDate;
+		for(const dateKey of dates) {
+			const dayObject = route[dateKey];
+			const date = moment(dateKey, "YYYYMMDD");
+
+			const daysBetween = date.diff(previousDate, 'days');
+
+			output += "\nnight tent".repeat(Math.max(0, daysBetween - 1));
+			output += `\n// ${dateKey}\n`;
+			output += this.pathToString(dayObject.path);
+			output += `night ${dayObject.night}\n`;
+
+			previousDate = date;
+		}
+
+		return output;
+	}
+
+	pathToString(path) {
+		let output = "";
+		return path
+			.map(coord => `${coord.lat} ${coord.lon} ${coord.ele || ""}`.trim() + "\n")
+			.join("");
+	}
+
 	createDayObject(date, text, nightType) {
 		const path =
 			text.split("\n")
@@ -157,81 +233,6 @@ class GpsCommand extends Command {
 			rawText: "night " + nightType,
 			toJSON() { return { night: this.night, path: this.path } }
 		};
-	}
-
-	async updateRoute(ctx, tour, day) {
-		const route = await awsHelper.loadJsonOrEmpty(tour.routeJsonKey);
-
-		const isOverwrite = route[day.date]; // check if the day exists already
-		if(isOverwrite && (await this.askAllowOverwrite(ctx, day.date) === false)) {
-			return;
-		}
-
-		route[day.date] = day;
-
-		const text = this.generateRouteTxt(tour, route);
-		await awsHelper.uploadFile(tour.routeTxtKey, text);
-		await awsHelper.uploadFile(tour.routeJsonKey, stableStringify(route));
-
-		ctx.sendText(`Success: ${day.date}`);
-	}
-
-	async rebuildTourRouteTxt(tour) {
-		const route = await awsHelper.loadJsonOrEmpty(tour.routeJsonKey);
-		await awsHelper.uploadFile(tour.routeTxtKey, await this.generateRouteTxt(tour, route));
-	}
-
-	generateRouteTxt(tour, route) {
-		const dates = Object.keys(route).sort();
-		const startDate = moment(tour.startDate, "DD.MM.YYYY");
-
-		let output = `// route for ${tour.name}, generated from route.json\n`;
-		let previousDate = startDate;
-		for(const dateKey of dates) {
-			const dayObject = route[dateKey];
-			const date = moment(dateKey, "YYYYMMDD");
-
-			const daysBetween = date.diff(previousDate, 'days');
-
-			output += "\nnight tent".repeat(Math.max(0, daysBetween - 1));
-			output += `\n// ${dateKey}\n`;
-			output += this.pathToString(dayObject.path);
-			output += `night ${dayObject.night}\n`;
-
-			previousDate = date;
-		}
-
-		return output;
-	}
-
-	// TODO: create keyboard buttons instead of y/n
-	async askAllowOverwrite(ctx, filename) {
-		const result =
-			await ctx.askForMessage(
-				`Day ${filename} exists, overwrite (y/n)?`,
-				{
-					accept: (msg, reject) => {
-						if(msg.text && (msg.text.toLowerCase() === "y" || msg.text.toLowerCase() === "n")) {
-							return msg.text.toLowerCase();
-						}
-
-						return reject("Send either 'y' or 'n' to continue");
-					}
-				}
-			);
-
-		return result.value === "y";
-	}
-
-	async saveRawDayRoute(tour, day) {
-		await awsHelper.uploadFile(tour.routeGpsFolderKey + day.date + ".txt", day.rawText);
-	}
-
-	pathToString(path) {
-		let output = "";
-		return path
-			.map(coord => `${coord.lat} ${coord.lon} ${coord.ele || ""}`.trim() + "\n")
-			.join("");
 	}
 
 	async getLastUploadedDateOfRoute(tour) {
