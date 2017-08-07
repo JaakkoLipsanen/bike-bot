@@ -82,6 +82,17 @@ class ResponseContext {
 		});
 	}
 
+	async listenForMessages(callback) {
+		return new Promise(resolve => {
+			const listener = (msg) => {
+				const stopCallback = () => { resolve(); this._messageListener = null; };
+				callback(msg, stopCallback);
+			};
+
+			this._messageListener = listener;
+		})
+	}
+
 	// TODO: callbacks should probably be global? so that even if new commandInfo
 	// is started, the old callback buttons would work. although, that causes
 	// memory leak since all old commands would just wait :/ well whatever,
@@ -114,14 +125,18 @@ class ResponseContext {
 	}
 
 	_onNewMessage(msg) {
-		if(this._messageWaitQueue.length === 0) {
+		if(this._messageWaitQueue.length !== 0) {
+			const response = this._messageWaitQueue.shift();
+			response.resolve(msg);
+		}
+		else if(this._messageListener) {
+			this._messageListener(msg);
+		}
+		else {
 			// TODO: show command name on the error message?
 			console.error("A new message was received but command didn't respond");
-			return;
+			this.sendText("A new message was received but command didn't respond");
 		}
-
-		const response = this._messageWaitQueue.shift();
-		response.resolve(msg);
 	}
 
 	_onNewCallbackQuery(query) {
