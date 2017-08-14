@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "outDir": "./built",
+        "allowJs": true,
+        "target": "es2017",
+        "moduleResolution": "node",
+        "inlineSources": true,
+        "strict": true,
+        "allowSyntheticDefaultImports": true,
+        "noImplicitReturns": true,
+        "noUnusedLocals": true
+    },
+    "include": [
+        "./src/**/*"
+    ],
+    "files": [
+        "./types/untyped.d.ts"
+    ]
+}

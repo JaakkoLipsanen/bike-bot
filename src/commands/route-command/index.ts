@@ -1,19 +1,21 @@
-const { Command } = require('../../bot');
-const helpers = require('../../helpers');
+import { Command, ResponseContext } from '../../bot';
+import * as helpers from '../../helpers';
 
-const chartRenderer = require('./chart-renderer');
-const routeFetcher = require('./route-fetcher');
+import * as chartRenderer from './chart-renderer';
+import * as routeFetcher from './route-fetcher';
+import { Route } from './route-fetcher';
+import { Location, AsyncResponse } from '../../common';
 
 /* Displays the elevation graph and length between two or more points.
    If > 2 points, then the middle ones are just 'waypoints' */
 // TODO: atm waypoints (over 2 points) is supported only if the locations are given
 // along with the command, like "/route place1 place2 place3"
-class RouteCommand extends Command {
-	constructor(...args) {
-		super(...args);
+export default class RouteCommand extends Command {
+	constructor(ctx: ResponseContext, ...args: any[]) {
+		super(ctx, ...args);
 	}
 
-	async run(ctx, params) {
+	async run(ctx: ResponseContext, params: string[]) {
 		const waypoints = await this.getWaypoints(ctx, params);
 		const routeResult = await this.getRouteFrom(waypoints);
 
@@ -36,25 +38,24 @@ class RouteCommand extends Command {
 		}
 	}
 
-	async sendRouteInfo(ctx, route, otherRoutes) {
+	private async sendRouteInfo(ctx: ResponseContext, route: Route, otherRoutes?: Route[]) {
 		const chart = await chartRenderer.renderChart(route);
 
 		ctx.sendText(
 			`*Distance:* ${route.distance.toFixed(1)}km\n` +
-			`*Ascent/Descent:* +${Math.round(route.elevationData.ascent)}m/-${Math.round(route.elevationData.descent)}m`,
-			{ parse_mode: "markdown" });
+			`*Ascent/Descent:* +${Math.round(route.elevationData.ascent)}m/-${Math.round(route.elevationData.descent)}m`);
 
 		ctx.sendPhoto(chart);
 		ctx.sendPhoto(
 			route.mapImageLink,
-			otherRoutes ? this.createAlternativeRoutesReplyMarkup(otherRoutes) : undefined);
+			otherRoutes ? this.createAlternativeRoutesMessageSendOpts(otherRoutes) : undefined);
 	}
 
-	async getRouteFrom(waypoints) {
+	private async getRouteFrom(waypoints: Location[]): AsyncResponse<{ route: Route, otherRoutes: Route[]}> {
 		const result = await routeFetcher.getRouteFrom(waypoints);
 		if(result.success) {
 			// TODO: display multiple routes? maybe show inline buttons?
-			return  {
+			return {
 				success: true,
 				payload: {
 					route: result.payload.routes[0],
@@ -63,11 +64,10 @@ class RouteCommand extends Command {
 			};
 		}
 
-		// TODO: this.abort(result.error.message) or something?
 		return result;
 	}
 
-	async getWaypoints(ctx, parameters) {
+	private async getWaypoints(ctx: ResponseContext, parameters: string[]): Promise<Location[]> {
 		if(parameters.length >= 2) {
 			return parameters;
 		}
@@ -79,7 +79,7 @@ class RouteCommand extends Command {
 		return [startLocation, endLocation];
 	}
 
-	createAlternativeRoutesReplyMarkup(alternativeRoutes) {
+	private createAlternativeRoutesMessageSendOpts(alternativeRoutes: object[]) {
 		const buttonText = alternativeRoutes.length <= 2 ?
 			"Alternative route " :
 			(alternativeRoutes.length <= 4 ? "Alt route " : "");
@@ -98,5 +98,3 @@ class RouteCommand extends Command {
 		};
 	}
 }
-
-module.exports = RouteCommand;

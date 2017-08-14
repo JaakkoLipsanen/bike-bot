@@ -1,0 +1,1 @@
+declare module "chartjs-node"; // required in --noImplicitAny

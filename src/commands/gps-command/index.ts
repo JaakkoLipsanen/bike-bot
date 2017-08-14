@@ -1,16 +1,34 @@
-const path = require("path");
-const fetch = require("node-fetch");
-const moment = require("moment");
-const stableStringify = require('json-stable-stringify');
-const awsHelper = require("./aws-helper");
-const {
+import fetch from "node-fetch";
+import * as moment from "moment";
+import * as stableStringify from 'json-stable-stringify';
+import * as awsHelper from "./aws-helper";
+import {
 	isValidGpsFilename,
 	isValidGpsDate,
 	parseDateFromGpsFilename,
 	validateGpsFormat
-} = require("./gps-format-helper");
+} from "./gps-format-helper";
 
-const { Command } = require('../../bot');
+import { Command } from '../../bot';
+import ResponseContext from '../../bot/response-context';
+import { SendOpts } from '../../bot/response-context';
+import { LatLng, LatLngEle } from '../../common';
+import { TourInfo } from './aws-helper';
+import { Document } from '../../bot/index';
+
+type NightType = "tent" | "hotel";
+
+interface Day {
+	night: NightType,
+	path: LatLngEle[],
+	date: string,
+	rawText: string,
+	toJSON?: () => void;
+}
+
+interface RouteFile {
+	[key: string]: { night: NightType; path: LatLngEle[] };
+}
 
 // TODO:
 // - add elevation to gps files with gmaps api
@@ -19,12 +37,12 @@ const { Command } = require('../../bot');
 // - add /gps get-route or something to download the route.json or route.txt (for debugging)
 // - right now, multi file uplaods are really really inefficient, loading and
 //   saving the route between each file/day
-class GpsCommand extends Command {
-	constructor(...args) {
-		super(...args);
+export default class GpsCommand extends Command {
+	constructor(ctx: ResponseContext, ...args: any[]) {
+		super(ctx, ...args);
 	}
 
-	async run(ctx, params) {
+	async run(ctx: ResponseContext, params: string[]) {
 		const tour = await awsHelper.getCurrentTour();
 		if(params.length > 0) {
 			if(params[0] === "rebuild") {
@@ -47,16 +65,15 @@ class GpsCommand extends Command {
 		ctx.sendText("Done!");
 	}
 
-	async waitForUploads(ctx, tour) {
-		const DoneKeyboardMarkup = {
-			parse_mode: "markdown",
-			reply_markup: JSON.stringify({
+	private async waitForUploads(ctx: ResponseContext, tour: TourInfo) {
+		const DoneMessageSendOpts: SendOpts = {
+			reply_markup: {
 				resize_keyboard: true,
 				one_time_keyboard: true,
 				keyboard: [
 					[{ text: "done" }]
 				]
-			})
+			}
 		};
 
 		const lastUploadedDate = await this.getLastUploadedDateOfRoute(tour);
@@ -65,17 +82,17 @@ class GpsCommand extends Command {
 			(lastUploadedDate ? `_Last uploaded:_ *${lastUploadedDate}\n*` : "") +
 			"_Send 'done' when finished_\n" +
 			"_Change night type with 'n t' or 'n h'_",
-			DoneKeyboardMarkup
+			DoneMessageSendOpts
 		);
 
-		const days = [];
-		let currentNightType = "tent";
+		const days: Day[] = [];
+		let currentNightType: NightType = "tent";
 
-		const receivedDaysMessage = await ctx.sendText("_No days received yet_", { parse_mode: "markdown" });
+		const receivedDaysMessage = await ctx.sendText("_No days received yet_");
 		const updateReceivedDaysMessage = () => {
 			ctx.editMessageText(
 				receivedDaysMessage,
-				`*Received:*\n${days.map(d => d.date).join("\n")}`, { parse_mode: "markdown" });
+				`*Received:*\n${days.map(d => d.date).join("\n")}`);
 		};
 
 		// on multi-file uploads, often the files come at same time so if we use
@@ -86,7 +103,7 @@ class GpsCommand extends Command {
 			if(msg.document) {
 				const file = msg.document;
 				if(!isValidGpsFilename(file.file_name)) {
-					return ctx.sendText("Invalid filename. Please send a .txt file", DoneKeyboardMarkup);
+					return ctx.sendText("Invalid filename. Please send a .txt file", DoneMessageSendOpts);
 				}
 
 				const routeText = await this.downloadFile(ctx, file);
@@ -106,7 +123,7 @@ class GpsCommand extends Command {
 						return stopListeningCallback();
 					}
 
-					ctx.sendText("Must upload at least one route", DoneKeyboardMarkup);
+					ctx.sendText("Must upload at least one route", DoneMessageSendOpts);
 				}
 				else if(text.startsWith("n ")) {
 					const nightType = text.split(" ")[1];
@@ -131,10 +148,10 @@ class GpsCommand extends Command {
 		return days;
 	}
 
-	async updateRoute(ctx, tour, day) {
-		const route = await awsHelper.loadJsonOrEmpty(tour.routeJsonKey);
+	private async updateRoute(ctx: ResponseContext, tour: TourInfo, day: Day) {
+		const route: RouteFile = await awsHelper.loadJsonOrEmpty(tour.aws.routeJsonKey);
 
-		const isOverwrite = route[day.date]; // check if the day exists already
+		const isOverwrite = Boolean(route[day.date]); // check if the day exists already
 		if(isOverwrite && (await this.askAllowOverwrite(ctx, day.date) === false)) {
 			return;
 		}
@@ -142,25 +159,25 @@ class GpsCommand extends Command {
 		route[day.date] = day;
 
 		const text = this.generateRouteTxt(tour, route);
-		await awsHelper.uploadFile(tour.routeTxtKey, text);
-		await awsHelper.uploadFile(tour.routeJsonKey, stableStringify(route));
+		await awsHelper.uploadFile(tour.aws.routeTxtKey, text);
+		await awsHelper.uploadFile(tour.aws.routeJsonKey, stableStringify(route));
 
 		ctx.sendText(`Success: ${day.date}`);
 	}
 
-	async saveRawDayRoute(tour, day) {
-		await awsHelper.uploadFile(tour.routeGpsFolderKey + day.date + ".txt", day.rawText);
+	private async saveRawDayRoute(tour: TourInfo, day: Day) {
+		await awsHelper.uploadFile(tour.aws.routeGpsFolderKey + day.date + ".txt", day.rawText);
 	}
 
-	async rebuildTourRouteTxt(tour) {
-		const route = await awsHelper.loadJsonOrEmpty(tour.routeJsonKey);
-		await awsHelper.uploadFile(tour.routeTxtKey, await this.generateRouteTxt(tour, route));
+	private async rebuildTourRouteTxt(tour: TourInfo) {
+		const route = await awsHelper.loadJsonOrEmpty(tour.aws.routeJsonKey);
+		await awsHelper.uploadFile(tour.aws.routeTxtKey, await this.generateRouteTxt(tour, route));
 	}
 
 	// TODO: create keyboard buttons instead of y/n
-	async askAllowOverwrite(ctx, filename) {
+	private async askAllowOverwrite(ctx: ResponseContext, filename: string) {
 		const result =
-			await ctx.askForMessage(
+			await ctx.askForMessage<"y" | "n">(
 				`Day ${filename} exists, overwrite (y/n)?`,
 				{
 					accept: (msg, reject) => {
@@ -176,7 +193,7 @@ class GpsCommand extends Command {
 		return result.value === "y";
 	}
 
-	generateRouteTxt(tour, route) {
+	private generateRouteTxt(tour: TourInfo, route: RouteFile) {
 		const dates = Object.keys(route).sort();
 		const startDate = moment(tour.startDate, "DD.MM.YYYY");
 
@@ -199,33 +216,32 @@ class GpsCommand extends Command {
 		return output;
 	}
 
-	pathToString(path) {
-		let output = "";
+	private pathToString(path: LatLngEle[]) {
 		return path
-			.map(coord => `${coord.lat} ${coord.lon} ${coord.ele || ""}`.trim() + "\n")
+			.map(coord => `${coord.lat} ${coord.lng} ${coord.ele || ""}`.trim() + "\n")
 			.join("");
 	}
 
-	createDayObject(date, text, nightType) {
-		const path =
+	private createDayObject(date: string, text: string, nightType: NightType): Day {
+		const path: LatLng[] =
 			text.split("\n")
 			.map(line => line.trim())
 			.filter(line => line && !line.startsWith("//") && line.split(" ").length === 2)
 			.map(line => {
 				const coords = line.split(" ");
-				return { lat: coords[0], lon: coords[1] }; // TODO: ele
+				return { lat: Number(coords[0]), lng: Number(coords[1]) }; // TODO: ele
 			});
 
 		return {
 			night: nightType,
-			path: path,
-			date: date,
+			path,
+			date,
 			rawText: text + "\n" + "night " + nightType,
-			toJSON() { return { night: this.night, path: this.path } }
+			toJSON: () => ({ night: nightType, path: path })
 		};
 	}
 
-	createEmptyDayObject(date, nightType) {
+	private createEmptyDayObject(date: string, nightType: NightType): Day {
 		return {
 			night: nightType,
 			path: [],
@@ -235,17 +251,15 @@ class GpsCommand extends Command {
 		};
 	}
 
-	async getLastUploadedDateOfRoute(tour) {
-		const route = await awsHelper.loadJsonOrEmpty(tour.routeJsonKey);
+	private async getLastUploadedDateOfRoute(tour: TourInfo) {
+		const route = await awsHelper.loadJsonOrEmpty(tour.aws.routeJsonKey);
 		const keys = Object.keys(route).sort();
 		return keys[keys.length - 1] || "";
 	}
 
-	async downloadFile(ctx, document) {
+	private async downloadFile(ctx: ResponseContext, document: Document) {
 		const link = await ctx.getFileLink(document);
 		const file = await fetch(link);
 		return await file.text();
 	}
 }
-
-module.exports = GpsCommand;

@@ -1,7 +1,14 @@
-const ChartjsNode = require('chartjs-node');
+import * as ChartJS from 'chartjs-node';
+import { Route } from './route-fetcher';
+
+interface ChartOpts {
+	type: string;
+	data: { labels: string[], datasets: object[] };
+	options: object;
+}
 
 // TODO: are this ok for all values?
-const getStepSizeFrom = (distance) => {
+const getStepSizeFrom = (distance: number) => {
 	if(distance < 140) return 5;
 	if(distance < 300) return 10;
 	if(distance < 1000) return 25;
@@ -10,18 +17,18 @@ const getStepSizeFrom = (distance) => {
 };
 
 // TODO: this might not be 100% accurate. I should only render as many points as is
-const getHorizontalLabelsFrom = (route) => {
-	const labels = [];
+const getHorizontalLabelsFrom = (route: Route) => {
+	const labels: string[] = [];
 
 	const pointCount = route.elevationData.points.length;
 	for(let i = 0; i <= pointCount; i++) {
-		labels.push(Math.round(route.distance * (i / pointCount)));
+		labels.push(Math.round(route.distance * (i / pointCount)).toString());
 	}
 
 	return labels;
 };
 
-const createChartOpts = (route) => {
+const createChartOpts = (route: Route): ChartOpts  => {
 	const labels = getHorizontalLabelsFrom(route); // x axis labels
 	const data = route.elevationData.points.map(p => ({ x: p.distance, y: p.elevation }) ); // y-axis
 	const stepSize = getStepSizeFrom(route.distance);
@@ -59,11 +66,9 @@ const createChartOpts = (route) => {
 	};
 };
 
-module.exports = {
-	async renderChart(route) {
-		const chartNode = new ChartjsNode(1280, 500);
-		await chartNode.drawChart(createChartOpts(route));
+export const renderChart = async (route: Route): Promise<Buffer> => {
+	const chartNode = new ChartJS(1280, 500);
+	await chartNode.drawChart(createChartOpts(route));
 
-		return await chartNode.getImageBuffer('image/png');
-	}
-};
+	return await chartNode.getImageBuffer('image/png');
+}

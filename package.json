@@ -4,13 +4,17 @@
   "description": "Telegram bot for my cycling trips",
   "main": "server.js",
   "scripts": {
-    "start": "node --harmony src/server.js",
-    "dev": "nodemon --inspect --harmony src/server.js",
+    "start": "ts-node --harmony src/server.ts",
+    "dev": "nodemon --inspect --harmony --exec ts-node -- src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "dependencies": {
     "@google/maps": "^0.3.1",
+    "@types/dotenv-safe": "^4.0.0",
+    "@types/json-stable-stringify": "^1.0.31",
+    "@types/node": "^8.0.20",
+    "@types/node-fetch": "^1.6.7",
     "aws-sdk": "^2.94.0",
     "chart.js": "^2.5.0",
     "chartjs-node": "^1.4.1",
@@ -19,7 +23,9 @@
     "json-stable-stringify": "^1.0.1",
     "moment": "^2.18.1",
     "node-fetch": "^1.7.1",
-    "tgfancy": "^0.10.0"
+    "tgfancy": "^0.10.0",
+    "ts-node": "^3.3.0",
+    "typescript": "^2.4.2"
   },
   "devDependencies": {
     "eslint": "^3.19.0",
