@@ -1,5 +1,4 @@
-const Tgfancy = require('tgfancy');
-
+import * as Tgfancy from 'tgfancy';
 import Command, { CommandConstructor } from './command';
 import ResponseContext from './response-context';
 import { Message, CallbackQuery, Chat } from './index';

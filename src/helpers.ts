@@ -1,6 +1,7 @@
 import ResponseContext from './bot/response-context';
 import { LatLng, AsyncResponse } from './common';
 import { Message } from './bot/index';
+import * as googleMaps from '@google/maps';
 
 // defines tg bot opts for (non-inline) keyboard layout with location request
 const LocationMessageSendOpts = {
@@ -13,7 +14,7 @@ const LocationMessageSendOpts = {
 	}
 };
 
-export const gmapsClient = require('@google/maps').createClient({
+export const gmapsClient = googleMaps.createClient({
 	key: process.env.GMAPS_API_KEY,
 	Promise: Promise
 });
