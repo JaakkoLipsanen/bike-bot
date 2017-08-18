@@ -8,6 +8,7 @@ import { TelegramBot } from './bot';
 import RouteCommand from './commands/route-command';
 import WeatherCommand from './commands/weather-command';
 import GpsCommand from './commands/gps-command';
+import BlogCommand from './commands/blog-command';
 
 const token = process.env.TG_BOT_TOKEN!;
 const bot = process.env.HEROKU ?
@@ -17,6 +18,7 @@ const bot = process.env.HEROKU ?
 bot.register('route', RouteCommand);
 bot.register('weather', WeatherCommand);
 bot.register('gps', GpsCommand);
+bot.register('blog', BlogCommand);
 
 // show more detailed errors for unhandled promise exceptions
 process.on('unhandledRejection', r => console.error(r));

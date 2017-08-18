@@ -24,14 +24,29 @@ export interface TourInfo extends BaseTourInfo {
     }
 }
 
-export const loadTextFile = async (key: string) => {
+export interface BlogPostInfo {
+    name: string;
+    trip: string;
+    title: string;
+    dayRange: string;
+    mainImage: string;
+    tripDirectoryName: string;
+}
+
+type AwsGetReturnType = string | Buffer | Uint8Array | Blob;
+export const loadFile = async <T extends AwsGetReturnType>(key: string): Promise<T | undefined> => {
     try {
         const file = await s3.getObject({ ...DefaultParams, Key: key }).promise();
-        return (file.Body || "").toString();
+        return file.Body as T;
     }
     catch(err) {
         throw new Error(`Error loading ${key} from AWS (${err.code}):\n${err.message}`);
     }
+};
+
+export const loadTextFile = async (key: string) => {
+    const buffer = await loadFile<Buffer>(key);
+    return (buffer || "").toString();
 };
 
 export const loadJson = async (key: string) => {
@@ -79,8 +94,10 @@ export const listFiles = async (prefix: string) => {
 };
 
 export const getCurrentTour = async (): Promise<TourInfo> => {
-    const tourData = await loadJson("cycle/tours.json");
+    type TourData = { tours: BaseTourInfo[], currentTour: number };
+    const tourData: TourData = await loadJson("cycle/tours.json");
     const currentTour: BaseTourInfo = tourData.tours[tourData.currentTour];
+
     return {
         ...currentTour,
         aws: {
@@ -93,4 +110,28 @@ export const getCurrentTour = async (): Promise<TourInfo> => {
 
 export const getTourRouteFolder = (tour: BaseTourInfo) => {
     return `cycle/routes/${tour.directoryName}`;
+};
+
+export const getBlogPostInfos = async (): Promise<BlogPostInfo[]> => {
+    const PostsFilePath = "cycle/blog/posts.txt";
+    const postsFile = await loadTextFile(PostsFilePath);
+
+    return postsFile.split("\n")
+        .map(line => line.trim())
+        .filter(line => Boolean(line) && !line.startsWith("//"))
+        .map(line => {
+            const splitted = line.split("|");
+            if(splitted.length < 5) {
+                throw new Error(`posts.txt invalid line: '${line}`);
+            }
+
+            return { 
+                name: splitted[0], 
+                trip: splitted[1],
+                title: splitted[2],
+                dayRange: splitted[3],
+                mainImage: splitted[4],
+                get tripDirectoryName() { return this.trip.replace(" ", "").toLowerCase(); }
+            };
+        })
 };

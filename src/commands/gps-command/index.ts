@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 import * as moment from "moment";
 import * as stableStringify from 'json-stable-stringify';
-import * as awsHelper from "./aws-helper";
+import * as awsHelper from "../../aws-helper";
 import {
 	isValidGpsFilename,
 	isValidGpsDate,
@@ -13,7 +13,7 @@ import { Command } from '../../bot';
 import ResponseContext from '../../bot/response-context';
 import { SendOpts } from '../../bot/response-context';
 import { LatLng, LatLngEle } from '../../common';
-import { TourInfo } from './aws-helper';
+import { TourInfo } from '../../aws-helper';
 import { Document } from '../../bot/index';
 
 type NightType = "tent" | "hotel";

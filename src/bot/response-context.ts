@@ -46,7 +46,7 @@ export default class ResponseContext {
 		return this.bot.sendPhoto(this.chat.id, image, addDefaultSendOpts(opts));
 	}
 
-	sendDocument(doc: object, opts?: SendOpts, fileOpts?: object): Message  {
+	sendDocument(doc: Buffer, opts?: SendOpts, fileOpts?: object): Message  {
 		return this.bot.sendDocument(this.chat.id, doc, addDefaultSendOpts(opts), fileOpts);
 	}
 
