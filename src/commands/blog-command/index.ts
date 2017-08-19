@@ -36,16 +36,16 @@ export default class GpsCommand extends Command {
 	}
 
 	private async downloadPost(ctx: ResponseContext, postName: string): Promise<void> {
-		const msg = await ctx.sendText(`Loading post '${postName}' *0% done*`);
+		const msg = await ctx.sendText(`Starting the download...`);
 		const updateMessagePercentage = (percentage: number) => {
-			ctx.editMessageText(msg, `Loading post '${postName}' *${percentage}% done*`);
+			ctx.editMessageText(msg, `Downloading '${postName}' *${percentage}% done*`);
 		};	
 
 		const allPosts = await awsHelper.getBlogPostInfos();
 
 		const post = allPosts.find(post => post.name === postName);
 		if(!post) {
-			ctx.sendText(`Post '${postName}' not found!`);
+			ctx.editMessageText(msg, `Post '${postName}' not found!`);
 			return;
 		}
 
@@ -53,7 +53,9 @@ export default class GpsCommand extends Command {
 			updateMessagePercentage(Math.round(currentFileNumber / totalFileCount * 100));
 		});	
 
-		ctx.sendDocument(zip, undefined, { filename: `${post.name}.zip` });
+		ctx.editMessageText(msg, "Uploading to Telegram...");
+		await ctx.sendDocument(zip, undefined, { filename: `${post.name}.zip` });
+		ctx.editMessageText(msg, "Done!");
 	}
 
 	private async zipAwsFilesWithPrefix(prefix: string, fileZippedCallback: (fileNumber: number, totalFileCount: number) => void) {
