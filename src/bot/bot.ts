@@ -91,7 +91,7 @@ export default class TelegramBot {
 			await this._currentCommand.run(context, params, paramsRaw);
 		}
 		catch(err) {
-			context.sendText(`Uncaught error:\n${err}`);
+			context.sendText(`Uncaught error:\n${err}\n${err && err.stack}`);
 			console.error(err);
 		}
 
