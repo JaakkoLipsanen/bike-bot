@@ -1,3 +1,4 @@
+import fetch from "node-fetch";
 import { Message, CallbackQuery, Chat, Document } from './index';
 export interface SendOpts {
 	reply_markup?: object;
@@ -18,7 +19,7 @@ type UpdateResponseContext = { type: "message", msg: Message } | { type: "query"
 type MessageListener = { (msg: Message): void };
 type Resolvable<T> = { resolve: (value: T) => void }
 
-type AcceptCallback<T> = (msg: any, reject: (str: string) => any) => Promise<T>;
+type AcceptCallback<T> = (msg: Message, reject: (str: string) => any) => Promise<T>;
 type AskForMessageOpts<T> = { accept: AcceptCallback<T>, messageSendOpts?: SendOpts };
 
 export default class ResponseContext {
@@ -77,6 +78,12 @@ export default class ResponseContext {
 		return await this.bot.getFileLink(document.file_id)
 	}
 
+	async downloadDocument(document: Document) {
+		const link = await this.getFileLink(document);
+		const file = await fetch(link);
+		return file;
+	}
+
 	waitForMessage(): Promise<Message> {
 		return new Promise(resolve => {
 			this._messageWaitQueue.push({ resolve: resolve });
@@ -109,7 +116,8 @@ export default class ResponseContext {
 
 	async askForMessage<T>(
 		initialMessage = "Please enter message", 
-		opts: AskForMessageOpts<T>): Promise<{ value: T, msg: Message }> 
+		opts: AskForMessageOpts<T>,
+		messageUpdateType: "new" | "edit" = "new"): Promise<{ value: T, msg: Message }> 
 	{
 		const accept = opts.accept;
 		const messageSendOpts = addDefaultSendOpts(opts.messageSendOpts);
@@ -118,14 +126,20 @@ export default class ResponseContext {
 		const REJECT_VAL = Symbol();
 		const rejectCallback = (rejectionMessage: string) => { messageToShow = rejectionMessage; return REJECT_VAL; };
 
+		const firstMessage = await this.sendText(messageToShow, messageSendOpts);
 		while(true) {
-			this.sendText(messageToShow, messageSendOpts);
-
 			const msg = await this.waitForMessage();
 			const value: T | symbol = await accept(msg, rejectCallback);
 
 			if(typeof value !== "symbol") {
 				return { value: value, msg: msg };
+			}
+
+			if(messageUpdateType === "edit") {
+				this.editMessageText(firstMessage, messageToShow);
+			}
+			else {
+				this.sendText(messageToShow, messageSendOpts);
 			}
 		}
 	}

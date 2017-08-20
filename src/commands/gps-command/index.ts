@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 import * as moment from "moment";
 import * as stableStringify from 'json-stable-stringify';
 import * as awsHelper from "../../aws-helper";
@@ -14,7 +13,7 @@ import ResponseContext from '../../bot/response-context';
 import { SendOpts } from '../../bot/response-context';
 import { LatLng, LatLngEle } from '../../common';
 import { TourInfo } from '../../aws-helper';
-import { Document } from '../../bot/index';
+import { Message } from '../../bot/index';
 
 type NightType = "tent" | "hotel";
 
@@ -106,7 +105,8 @@ export default class GpsCommand extends Command {
 					return ctx.sendText("Invalid filename. Please send a .txt file", DoneMessageSendOpts);
 				}
 
-				const routeText = await this.downloadFile(ctx, file);
+				const routeFile = await ctx.downloadDocument(file);
+				const routeText = await routeFile.text();
 				if(!validateGpsFormat(routeText)) {
 					return ctx.sendText(`File '${file.file_name} has invalid format. Make sure file contains only coordinate pairs`);
 				}
@@ -180,7 +180,7 @@ export default class GpsCommand extends Command {
 			await ctx.askForMessage<"y" | "n">(
 				`Day ${filename} exists, overwrite (y/n)?`,
 				{
-					accept: (msg, reject) => {
+					accept: (msg: Message, reject) => {
 						if(msg.text && (msg.text.toLowerCase() === "y" || msg.text.toLowerCase() === "n")) {
 							return msg.text.toLowerCase();
 						}
@@ -257,9 +257,5 @@ export default class GpsCommand extends Command {
 		return keys[keys.length - 1] || "";
 	}
 
-	private async downloadFile(ctx: ResponseContext, document: Document) {
-		const link = await ctx.getFileLink(document);
-		const file = await fetch(link);
-		return await file.text();
-	}
+	
 }
