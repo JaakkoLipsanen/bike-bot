@@ -63,7 +63,7 @@ export const loadJsonOrEmpty = async (key: string) => {
     return { };
 };
 
-export const uploadFile = async (key: string, stream: string) => {
+export const uploadFile = async (key: string, stream: string | Buffer) => {
     try {
         await s3.upload({ ...DefaultParams, Key: key, Body: stream }).promise();
     }

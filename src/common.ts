@@ -18,3 +18,5 @@ export type AsyncResponse<T> = Promise<Response<T>>;
 
 export type Location = string | LatLng;
 export type LatLngEle = LatLng & { ele?: number };
+
+export interface Size { width: number, height: number };
