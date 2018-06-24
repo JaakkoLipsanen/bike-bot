@@ -77,7 +77,7 @@ export async function uploadBlogPost(ctx: ResponseContext) {
 
 	await ctx.editMessageText(statusMessage, `Uploading post.txt & updating posts.txt...`);
 
-	const postFileContent = await postFile.async("string");
+	const postFileContent = normalizeJpegFileExtensions(await postFile.async("string"));
 	await awsHelper.uploadFile(`${awsBlogPostPath}/post.txt`, postFileContent);
 	await appendBlogPostInfoToPostsFile(blogPostName, postFileContent);
 
@@ -149,4 +149,13 @@ async function askIfOverwriteAllowed(ctx: ResponseContext, blogPostName: string)
 	});
 
 	return overwrite.value !== "n";
+}
+
+function normalizeJpegFileExtensions(text: string) {
+	const replaceAll = (input: string, from: string, to: string) => {
+		return input.replace(new RegExp(from, "g"), to);
+	};
+
+	const extensions = [".JPG", ".JPEG", ".JPE"];
+	return extensions.reduce((acc, cur) => replaceAll(acc, cur, ".jpg"), text);
 }
