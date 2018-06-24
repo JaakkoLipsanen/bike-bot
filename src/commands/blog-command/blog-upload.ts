@@ -36,14 +36,20 @@ export async function uploadBlogPost(ctx: ResponseContext) {
 	}
 
 	const zip = await zipper.loadAsync(blogPost.zipBuffer);
-	const postFile = await zip.file("/post.txt");
+	const postFile = await zip.filter(p => p.includes("post.txt"))[0];
 
 	if (!postFile) {
-		ctx.sendText("No post.txt found in the .zip, aborting!");
+		ctx.sendText(
+			"No post.txt found in the .zip, aborting! Maybe something wrong with zip folder structure?"
+		);
 		return;
 	}
 
-	const blogPostImages = await zip.filter((path, file) => path.startsWith("/orig/"));
+	const zipPrefix = postFile.name.slice(0, -"post.txt".length);
+
+	const blogPostImages = await zip.filter(
+		(path, file) => path.startsWith(`${zipPrefix}orig/`) && !file.dir
+	);
 	const statusMessage = await ctx.sendText("Converting...");
 
 	const awsBlogPostPath = `cycle/blog/posts/${blogPostName}`;
