@@ -1,5 +1,5 @@
-import ResponseContext from './response-context';
-import { Message, CallbackQuery } from './index';
+import ResponseContext from "./response-context";
+import { Message, CallbackQuery } from "./index";
 
 // not sure how useful class this is
 export default abstract class Command {
@@ -9,7 +9,9 @@ export default abstract class Command {
 	}
 
 	abstract async run(ctx: ResponseContext, params: string[], paramsRaw?: string): Promise<void>;
-	onAbort() { /* this.bot.sendText("Command aborted"); */ } // TODO: command name as well?
+	onAbort() {
+		/* this.bot.sendText("Command aborted"); */
+	} // TODO: command name as well?
 
 	onNewMessage(msg: Message) {
 		this._context.update({ type: "message", msg });
@@ -21,5 +23,5 @@ export default abstract class Command {
 }
 
 export interface CommandConstructor {
-	new(ctx: ResponseContext): Command;
+	new (ctx: ResponseContext): Command;
 }

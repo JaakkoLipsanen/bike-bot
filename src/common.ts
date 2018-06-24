@@ -1,11 +1,11 @@
 export interface LatLng {
-	lat: string | number; 
+	lat: string | number;
 	lng: string | number;
 }
 
 export interface Error {
 	success: false;
-	error: { message: string, type?: string };
+	error: { message: string; type?: string };
 }
 
 export interface Success<T> {
@@ -19,4 +19,7 @@ export type AsyncResponse<T> = Promise<Response<T>>;
 export type Location = string | LatLng;
 export type LatLngEle = LatLng & { ele?: number };
 
-export interface Size { width: number, height: number };
+export interface Size {
+	width: number;
+	height: number;
+}

@@ -1,9 +1,9 @@
-import * as Tgfancy from 'tgfancy';
-import Command, { CommandConstructor } from './command';
-import ResponseContext from './response-context';
-import { Message, CallbackQuery, Chat } from './index';
+import * as Tgfancy from "tgfancy";
+import Command, { CommandConstructor } from "./command";
+import ResponseContext from "./response-context";
+import { Message, CallbackQuery, Chat } from "./index";
 
-type CommandInfo = { name: string, params: string[], paramsRaw: string };
+type CommandInfo = { name: string; params: string[]; paramsRaw: string };
 
 export default class TelegramBot {
 	private _currentCommand: Command | null;
@@ -41,26 +41,26 @@ export default class TelegramBot {
 	}
 
 	private subscribeToNewMessages() {
-		this.tg.on('message', (msg: Message) => {
-			if(msg.text) {
+		this.tg.on("message", (msg: Message) => {
+			if (msg.text) {
 				msg.text = msg.text.trim();
 
 				// if is text message and matches command format (= '/test yy zz' etc)
-				if(this.isCommand(msg.text)) {
-				   const commandInfo = this.getCommandInfoFrom(msg.text);
-				   this.startCommand(msg.chat, commandInfo);
+				if (this.isCommand(msg.text)) {
+					const commandInfo = this.getCommandInfoFrom(msg.text);
+					this.startCommand(msg.chat, commandInfo);
 
-				   return;
-			   }
+					return;
+				}
 			}
 
-			if(this._currentCommand !== null) {
+			if (this._currentCommand !== null) {
 				this._currentCommand.onNewMessage(msg);
 			}
 		});
 
-		this.tg.on('callback_query', (query: CallbackQuery) => {
-			if(this._currentCommand !== null) {
+		this.tg.on("callback_query", (query: CallbackQuery) => {
+			if (this._currentCommand !== null) {
 				this._currentCommand.onNewCallbackQuery(query);
 			}
 		});
@@ -68,13 +68,13 @@ export default class TelegramBot {
 
 	private async startCommand(chat: Chat, commandInfo: CommandInfo) {
 		const NewCommandType = this._registeredCommands.get(commandInfo.name);
-		if(!NewCommandType) {
+		if (!NewCommandType) {
 			this.tg.sendMessage(chat.id, `Unknown command '${commandInfo.name}'`);
 			return;
 		}
 
 		// abort currently running command
-		if(this._currentCommand !== null) {
+		if (this._currentCommand !== null) {
 			// TODO: maybe abort() can return 'force keep open'?
 			this._currentCommand.onAbort();
 		}
@@ -89,13 +89,12 @@ export default class TelegramBot {
 		// run and wait until the execution has ended
 		try {
 			await this._currentCommand.run(context, params, paramsRaw);
-		}
-		catch(err) {
+		} catch (err) {
 			context.sendText(`Uncaught error:\n${err}\n${err && err.stack}`);
 			console.error(err);
 		}
 
-		if(this._currentCommand === createdCommand) {
+		if (this._currentCommand === createdCommand) {
 			this._currentCommand = null;
 		}
 	}
@@ -108,7 +107,7 @@ export default class TelegramBot {
 
 	// commandText == '/test param1 param2' etc
 	private getCommandInfoFrom(commandText: string): CommandInfo {
-		if(!this.isCommand(commandText)) {
+		if (!this.isCommand(commandText)) {
 			throw new Error(`'${commandText}' is not a command`);
 		}
 
@@ -117,14 +116,14 @@ export default class TelegramBot {
 		// TODO: one possible problem: if param starts with /, the / is ignored
 		const matchCommandRegex = /([^\/\s"']+)|"([^"]*)"|'([^']*)'/g;
 		const match = commandText.match(matchCommandRegex);
-		if(!match) {
+		if (!match) {
 			throw new Error(`'${commandText}' is not a command`);
 		}
 
 		const name = match[0];
 
 		// remove the command name and possible quotes around the parameters
-		const params = match.splice(1).map(p => p.replace(/"/g, ''));
+		const params = match.splice(1).map(p => p.replace(/"/g, ""));
 		const paramsRaw = commandText.slice(name.length + 1).trim();
 		return { name, params, paramsRaw };
 	}

@@ -1,5 +1,5 @@
 import * as moment from "moment";
-import * as stableStringify from 'json-stable-stringify';
+import * as stableStringify from "json-stable-stringify";
 import * as awsHelper from "../../aws-helper";
 import {
 	isValidGpsFilename,
@@ -8,20 +8,20 @@ import {
 	validateGpsFormat
 } from "./gps-format-helper";
 
-import { Command } from '../../bot';
-import ResponseContext from '../../bot/response-context';
-import { SendOpts } from '../../bot/response-context';
-import { LatLng, LatLngEle } from '../../common';
-import { TourInfo } from '../../aws-helper';
-import { Message } from '../../bot/index';
+import { Command } from "../../bot";
+import ResponseContext from "../../bot/response-context";
+import { SendOpts } from "../../bot/response-context";
+import { LatLng, LatLngEle } from "../../common";
+import { TourInfo } from "../../aws-helper";
+import { Message } from "../../bot/index";
 
 type NightType = "tent" | "hotel";
 
 interface Day {
-	night: NightType,
-	path: LatLngEle[],
-	date: string,
-	rawText: string,
+	night: NightType;
+	path: LatLngEle[];
+	date: string;
+	rawText: string;
 	toJSON?: () => void;
 }
 
@@ -43,8 +43,8 @@ export default class GpsCommand extends Command {
 
 	async run(ctx: ResponseContext, params: string[]) {
 		const tour = await awsHelper.getCurrentTour();
-		if(params.length > 0) {
-			if(params[0] === "rebuild") {
+		if (params.length > 0) {
+			if (params[0] === "rebuild") {
 				ctx.sendText(`Rebuilding route.txt...`);
 				await this.rebuildTourRouteTxt(tour);
 				ctx.sendText("Success!");
@@ -56,7 +56,7 @@ export default class GpsCommand extends Command {
 		}
 
 		const uploadedDays = await this.waitForUploads(ctx, tour);
-		for(const day of uploadedDays) {
+		for (const day of uploadedDays) {
 			await this.updateRoute(ctx, tour, day);
 			await this.saveRawDayRoute(tour, day);
 		}
@@ -69,18 +69,16 @@ export default class GpsCommand extends Command {
 			reply_markup: {
 				resize_keyboard: true,
 				one_time_keyboard: true,
-				keyboard: [
-					[{ text: "done" }]
-				]
+				keyboard: [[{ text: "done" }]]
 			}
 		};
 
 		const lastUploadedDate = await this.getLastUploadedDateOfRoute(tour);
 		ctx.sendText(
 			"*Upload gps files*\n" +
-			(lastUploadedDate ? `_Last uploaded:_ *${lastUploadedDate}\n*` : "") +
-			"_Send 'done' when finished_\n" +
-			"_Change night type with 'n t' or 'n h'_",
+				(lastUploadedDate ? `_Last uploaded:_ *${lastUploadedDate}\n*` : "") +
+				"_Send 'done' when finished_\n" +
+				"_Change night type with 'n t' or 'n h'_",
 			DoneMessageSendOpts
 		);
 
@@ -89,9 +87,7 @@ export default class GpsCommand extends Command {
 
 		const receivedDaysMessage = await ctx.sendText("_No days received yet_");
 		const updateReceivedDaysMessage = () => {
-			ctx.editMessageText(
-				receivedDaysMessage,
-				`*Received:*\n${days.map(d => d.date).join("\n")}`);
+			ctx.editMessageText(receivedDaysMessage, `*Received:*\n${days.map(d => d.date).join("\n")}`);
 		};
 
 		// on multi-file uploads, often the files come at same time so if we use
@@ -99,47 +95,48 @@ export default class GpsCommand extends Command {
 		// because there is no active ctx.waitForMessage ongoing.
 		// so lets instead use there this callback based ctx.listenForMessages
 		await ctx.listenForMessages(async (msg, stopListeningCallback) => {
-			if(msg.document) {
+			if (msg.document) {
 				const file = msg.document;
-				if(!isValidGpsFilename(file.file_name)) {
+				if (!isValidGpsFilename(file.file_name)) {
 					return ctx.sendText("Invalid filename. Please send a .txt file", DoneMessageSendOpts);
 				}
 
 				const routeFile = await ctx.downloadDocument(file);
 				const routeText = await routeFile.text();
-				if(!validateGpsFormat(routeText)) {
-					return ctx.sendText(`File '${file.file_name} has invalid format. Make sure file contains only coordinate pairs`);
+				if (!validateGpsFormat(routeText)) {
+					return ctx.sendText(
+						`File '${
+							file.file_name
+						} has invalid format. Make sure file contains only coordinate pairs`
+					);
 				}
 
 				const date = parseDateFromGpsFilename(file.file_name);
 				days.push(this.createDayObject(date, routeText, currentNightType));
 
 				updateReceivedDaysMessage();
-			}
-			else if(msg.text) {
+			} else if (msg.text) {
 				const text = msg.text.toLowerCase();
-				if(text.toLowerCase() === "done") {
-					if(days.length > 0) {
+				if (text.toLowerCase() === "done") {
+					if (days.length > 0) {
 						return stopListeningCallback();
 					}
 
 					ctx.sendText("Must upload at least one route", DoneMessageSendOpts);
-				}
-				else if(text.startsWith("n ")) {
+				} else if (text.startsWith("n ")) {
 					const nightType = text.split(" ")[1];
-					if(nightType) {
-						if(nightType === "h" || nightType === "t") {
-							currentNightType = (nightType === "h") ? "hotel" : "tent";
+					if (nightType) {
+						if (nightType === "h" || nightType === "t") {
+							currentNightType = nightType === "h" ? "hotel" : "tent";
 							ctx.sendText(`Night type changed to '${currentNightType}'`);
 						}
 					}
 				}
 				// empty night
-				else if(isValidGpsDate(text)) {
+				else if (isValidGpsDate(text)) {
 					days.push(this.createEmptyDayObject(text, currentNightType));
 					updateReceivedDaysMessage();
-				}
-				else {
+				} else {
 					ctx.sendText("Unrecognized text");
 				}
 			}
@@ -152,7 +149,7 @@ export default class GpsCommand extends Command {
 		const route: RouteFile = await awsHelper.loadJsonOrEmpty(tour.aws.routeJsonKey);
 
 		const isOverwrite = Boolean(route[day.date]); // check if the day exists already
-		if(isOverwrite && (await this.askAllowOverwrite(ctx, day.date) === false)) {
+		if (isOverwrite && (await this.askAllowOverwrite(ctx, day.date)) === false) {
 			return;
 		}
 
@@ -176,19 +173,15 @@ export default class GpsCommand extends Command {
 
 	// TODO: create keyboard buttons instead of y/n
 	private async askAllowOverwrite(ctx: ResponseContext, filename: string) {
-		const result =
-			await ctx.askForMessage<"y" | "n">(
-				`Day ${filename} exists, overwrite (y/n)?`,
-				{
-					accept: (msg: Message, reject) => {
-						if(msg.text && (msg.text.toLowerCase() === "y" || msg.text.toLowerCase() === "n")) {
-							return msg.text.toLowerCase();
-						}
-
-						return reject("Send either 'y' or 'n' to continue");
-					}
+		const result = await ctx.askForMessage<"y" | "n">(`Day ${filename} exists, overwrite (y/n)?`, {
+			accept: (msg: Message, reject) => {
+				if (msg.text && (msg.text.toLowerCase() === "y" || msg.text.toLowerCase() === "n")) {
+					return msg.text.toLowerCase();
 				}
-			);
+
+				return reject("Send either 'y' or 'n' to continue");
+			}
+		});
 
 		return result.value === "y";
 	}
@@ -199,11 +192,11 @@ export default class GpsCommand extends Command {
 
 		let output = `// route for ${tour.name}, generated from route.json\n`;
 		let previousDate = startDate;
-		for(const dateKey of dates) {
+		for (const dateKey of dates) {
 			const dayObject = route[dateKey];
 			const date = moment(dateKey, "YYYYMMDD");
 
-			const daysBetween = date.diff(previousDate, 'days');
+			const daysBetween = date.diff(previousDate, "days");
 
 			output += "\nnight tent".repeat(Math.max(0, daysBetween - 1));
 			output += `\n// ${dateKey}\n`;
@@ -217,14 +210,12 @@ export default class GpsCommand extends Command {
 	}
 
 	private pathToString(path: LatLngEle[]) {
-		return path
-			.map(coord => `${coord.lat} ${coord.lng} ${coord.ele || ""}`.trim() + "\n")
-			.join("");
+		return path.map(coord => `${coord.lat} ${coord.lng} ${coord.ele || ""}`.trim() + "\n").join("");
 	}
 
 	private createDayObject(date: string, text: string, nightType: NightType): Day {
-		const path: LatLng[] =
-			text.split("\n")
+		const path: LatLng[] = text
+			.split("\n")
 			.map(line => line.trim())
 			.filter(line => line && !line.startsWith("//") && line.split(" ").length === 2)
 			.map(line => {
@@ -247,7 +238,9 @@ export default class GpsCommand extends Command {
 			path: [],
 			date: date,
 			rawText: "night " + nightType,
-			toJSON() { return { night: this.night, path: this.path } }
+			toJSON() {
+				return { night: this.night, path: this.path };
+			}
 		};
 	}
 
@@ -256,6 +249,4 @@ export default class GpsCommand extends Command {
 		const keys = Object.keys(route).sort();
 		return keys[keys.length - 1] || "";
 	}
-
-	
 }
