@@ -58,7 +58,8 @@ export async function uploadBlogPost(ctx: ResponseContext) {
 			});
 		});
 
-		const imageFileName = path.basename(imageFile.name, path.extname(imageFile.name)); // without extension
+		const originalImageExtension = path.extname(imageFile.name);
+		const imageFileName = path.basename(imageFile.name, originalImageExtension); // without extension
 		for (const resizePresets of BlogImageResizePresets) {
 			const imageAwsPath = `${awsBlogPostPath}/${resizePresets.folderName}/${imageFileName}.${
 				resizePresets.imageType
@@ -67,6 +68,9 @@ export async function uploadBlogPost(ctx: ResponseContext) {
 
 			await awsHelper.uploadFile(imageAwsPath, resizedImageBuffer);
 		}
+
+		const origImageAwsPath = `${awsBlogPostPath}/orig/${imageFileName}.${originalImageExtension.toLowerCase()}`;
+		await awsHelper.uploadFile(origImageAwsPath, gmBuffer);
 
 		ctx.editMessageText(statusMessage, `Converted *${index + 1}/${blogPostImages.length}*`);
 	}
