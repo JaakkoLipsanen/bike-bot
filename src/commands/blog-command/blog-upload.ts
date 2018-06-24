@@ -75,8 +75,8 @@ export async function uploadBlogPost(ctx: ResponseContext) {
 			await awsHelper.uploadFile(imageAwsPath, resizedImageBuffer);
 		}
 
-		const origImageAwsPath = `${awsBlogPostPath}/orig/${imageFileName}.${originalImageExtension.toLowerCase()}`;
-		await awsHelper.uploadFile(origImageAwsPath, gmBuffer);
+		const origImageAwsPath = `${awsBlogPostPath}/orig/${imageFileName}${originalImageExtension.toLowerCase()}`;
+		await awsHelper.uploadFile(origImageAwsPath, buffer);
 
 		ctx.editMessageText(statusMessage, `Converted *${index + 1}/${blogPostImages.length}*`);
 	}
