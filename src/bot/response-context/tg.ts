@@ -1,9 +1,9 @@
-import fetch from "node-fetch";
-import { Message, CallbackQuery, Chat, Document } from "./index";
-export interface SendOpts {
-	reply_markup?: object;
-	parse_mode?: string;
-}
+import fetch, { Response } from "node-fetch";
+import { Message, CallbackQuery, Chat, Document } from "../index";
+import ResponseContext, { SendOpts, AskForMessageOpts, UpdateResponseContext } from "./index";
+
+type MessageListener = { (msg: Message): void };
+type Resolvable<T> = { resolve: (value: T) => void };
 
 const addDefaultSendOpts = (sendOpts?: SendOpts) => {
 	sendOpts = { parse_mode: "markdown", ...sendOpts };
@@ -14,18 +14,10 @@ const addDefaultSendOpts = (sendOpts?: SendOpts) => {
 	return sendOpts;
 };
 
-type UpdateResponseContext = { type: "message"; msg: Message } | { type: "query"; query: CallbackQuery };
-
-type MessageListener = { (msg: Message): void };
-type Resolvable<T> = { resolve: (value: T) => void };
-
-type AcceptCallback<T> = (msg: Message, reject: (str: string) => any) => Promise<T>;
-type AskForMessageOpts<T> = { accept: AcceptCallback<T>; messageSendOpts?: SendOpts };
-
-export default class ResponseContext {
+export default class TelegramResponseContext implements ResponseContext {
 	private _messageWaitQueue: Resolvable<Message>[] = [];
 	private _callbackQueryWaitQueue: Resolvable<CallbackQuery>[] = [];
-	private _messageListener: MessageListener | null;
+	private _messageListener: MessageListener | null = null;
 
 	public readonly bot: any;
 	public readonly chat: Chat;
@@ -79,7 +71,7 @@ export default class ResponseContext {
 		return await this.bot.getFileLink(document.file_id);
 	}
 
-	async downloadDocument(document: Document) {
+	async downloadDocument(document: Document): Promise<Response> {
 		const link = await this.getFileLink(document);
 		const file = await fetch(link);
 		return file;
