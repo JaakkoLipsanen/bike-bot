@@ -1,6 +1,6 @@
 import * as Tgfancy from "tgfancy";
 import Command, { CommandConstructor } from "./command";
-import ResponseContext from "./response-context";
+import TelegramResponseContext from "./response-context/tg";
 import { Message, CallbackQuery, Chat } from "./index";
 
 type CommandInfo = { name: string; params: string[]; paramsRaw: string };
@@ -79,7 +79,7 @@ export default class TelegramBot {
 			this._currentCommand.onAbort();
 		}
 
-		const context = new ResponseContext(this.tg, chat);
+		const context = new TelegramResponseContext(this.tg, chat);
 		const params = commandInfo.params;
 		const paramsRaw = commandInfo.paramsRaw;
 

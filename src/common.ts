@@ -23,3 +23,9 @@ export interface Size {
 	width: number;
 	height: number;
 }
+
+export const FN_NOT_IMPLEMENTED = (...args: any[]): any => {
+	throw new Error("Not implemented");
+};
+
+export const NOOP = (...args: any[]): any => {};

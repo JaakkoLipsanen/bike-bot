@@ -13,6 +13,11 @@ interface ImageResizePreset {
 	folderName: string;
 }
 
+export interface BlogPostZip {
+	postName: string;
+	zipBuffer: Buffer;
+}
+
 const BlogImageResizePresets: ImageResizePreset[] = [
 	{ folderName: "1080p", resolution: { width: 1920, height: 1080 }, imageType: "jpg" },
 	{ folderName: "720p", resolution: { width: 1280, height: 720 }, imageType: "jpg" },
@@ -22,10 +27,10 @@ const BlogImageResizePresets: ImageResizePreset[] = [
 	{ folderName: "10p", resolution: { width: 10, height: 10 }, imageType: "png" }
 ];
 
-export async function uploadBlogPost(ctx: ResponseContext) {
+export async function uploadBlogPost(ctx: ResponseContext, blogPostZip?: BlogPostZip) {
 	const zipper = new JsZip();
 
-	const blogPost = (await askForBlogZip(ctx)).value;
+	const blogPost = blogPostZip || (await askForBlogZip(ctx)).value;
 	const blogPostName = blogPost.postName; // todo: check if has invalid characters?
 
 	if (await checkIfPostExists(blogPostName)) {
@@ -46,12 +51,11 @@ export async function uploadBlogPost(ctx: ResponseContext) {
 	}
 
 	const zipPrefix = postFile.name.slice(0, -"post.txt".length);
-
 	const blogPostImages = await zip.filter(
 		(path, file) => path.startsWith(`${zipPrefix}orig/`) && !file.dir
 	);
-	const statusMessage = await ctx.sendText("Converting...");
 
+	const statusMessage = await ctx.sendText("Converting...");
 	const awsBlogPostPath = `cycle/blog/posts/${blogPostName}`;
 	for (const [index, imageFile] of blogPostImages.entries()) {
 		const buffer: Buffer = await imageFile.async("nodebuffer");
@@ -70,8 +74,8 @@ export async function uploadBlogPost(ctx: ResponseContext) {
 			const imageAwsPath = `${awsBlogPostPath}/${resizePresets.folderName}/${imageFileName}.${
 				resizePresets.imageType
 			}`;
-			const resizedImageBuffer = await resizeImage(gmBuffer, imageSize, resizePresets);
 
+			const resizedImageBuffer = await resizeImage(gmBuffer, imageSize, resizePresets);
 			await awsHelper.uploadFile(imageAwsPath, resizedImageBuffer);
 		}
 
