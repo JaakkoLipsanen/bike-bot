@@ -38,7 +38,7 @@ interface RouteFile {
 //   saving the route between each file/day
 export default class GpsCommand extends Command {
 	constructor(ctx: ResponseContext, ...args: any[]) {
-		super(ctx, ...args);
+		super(ctx);
 	}
 
 	async run(ctx: ResponseContext, params: string[]) {
