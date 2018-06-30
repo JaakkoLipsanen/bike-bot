@@ -6,7 +6,7 @@ import { downloadBlogPost } from "./blog-download";
 
 export default class BlogCommand extends Command {
 	constructor(ctx: ResponseContext, ...args: any[]) {
-		super(ctx, ...args);
+		super(ctx);
 	}
 
 	async run(ctx: ResponseContext, params: string[]) {

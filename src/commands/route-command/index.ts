@@ -12,7 +12,7 @@ import { Location, AsyncResponse } from "../../common";
 // along with the command, like "/route place1 place2 place3"
 export default class RouteCommand extends Command {
 	constructor(ctx: ResponseContext, ...args: any[]) {
-		super(ctx, ...args);
+		super(ctx);
 	}
 
 	async run(ctx: ResponseContext, params: string[]) {
