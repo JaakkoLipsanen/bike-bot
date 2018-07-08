@@ -11,22 +11,26 @@ import {
 import { Command } from "../../bot";
 import ResponseContext from "../../bot/response-context";
 import { SendOpts } from "../../bot/response-context";
-import { LatLng, LatLngEle } from "../../common";
+import { LatLngEle } from "../../common";
 import { TourInfo } from "../../aws-helper";
 import { Message } from "../../bot/index";
 
 type NightType = "tent" | "hotel";
 
+type CoordinateType = LatLngEle & { type: "coordinate" };
+type ChangeRouteType = { type: "change-route-type"; to: "cycle" | "transport" };
+type Path = (CoordinateType | ChangeRouteType)[];
+
 interface Day {
 	night: NightType;
-	path: LatLngEle[];
+	path: Path;
 	date: string;
 	rawText: string;
 	toJSON?: () => void;
 }
 
 interface RouteFile {
-	[key: string]: { night: NightType; path: LatLngEle[] };
+	[key: string]: { night: NightType; path: Path };
 }
 
 // TODO:
@@ -209,18 +213,30 @@ export default class GpsCommand extends Command {
 		return output;
 	}
 
-	private pathToString(path: LatLngEle[]) {
-		return path.map(coord => `${coord.lat} ${coord.lng} ${coord.ele || ""}`.trim() + "\n").join("");
+	private pathToString(path: Path) {
+		return path
+			.map(elem => {
+				if (elem.type === "coordinate") {
+					return `${elem.lat} ${elem.lng} ${elem.ele || ""}`.trim() + "\n";
+				}
+
+				return (elem.to === "cycle" ? "t c" : "t t") + "\n";
+			})
+			.join("");
 	}
 
 	private createDayObject(date: string, text: string, nightType: NightType): Day {
-		const path: LatLng[] = text
+		const path: Path = text
 			.split("\n")
 			.map(line => line.trim())
 			.filter(line => line && !line.startsWith("//") && line.split(" ").length === 2)
 			.map(line => {
-				const coords = line.split(" ");
-				return { lat: Number(coords[0]), lng: Number(coords[1]) }; // TODO: ele
+				const parts = line.split(" ");
+				if (line.startsWith("t ")) {
+					return { type: "change-route-type", to: parts[1] } as ChangeRouteType;
+				}
+
+				return { type: "coordinate", lat: Number(parts[0]), lng: Number(parts[1]) } as CoordinateType; // TODO: ele
 			});
 
 		return {
