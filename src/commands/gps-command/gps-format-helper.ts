@@ -22,7 +22,11 @@ export const validateGpsFormat = (text: string) => {
 	const lines = text.split("\n").map(line => line.trim());
 
 	const isCoordinates = (str: string) =>
-		str.split(" ").length === 2 && str.split(" ").every(coord => !isNaN(Number(coord)));
+		str.split(" ").length === 2 &&
+		str
+			.split(" ")
+			.map(str => str.replace(",", "."))
+			.every(coord => !isNaN(Number(coord)));
 
 	return lines.every(line => line.length === 0 || isCoordinates(line));
 };

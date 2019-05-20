@@ -236,7 +236,11 @@ export default class GpsCommand extends Command {
 					return { type: "change-route-type", to: parts[1] } as ChangeRouteType;
 				}
 
-				return { type: "coordinate", lat: Number(parts[0]), lng: Number(parts[1]) } as CoordinateType; // TODO: ele
+				return {
+					type: "coordinate",
+					lat: Number(parts[0].replace(",", ".")),
+					lng: Number(parts[1].replace(",", "."))
+				} as CoordinateType; // TODO: ele
 			});
 
 		return {
